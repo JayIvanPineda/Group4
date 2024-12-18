@@ -25,13 +25,22 @@ while True:
         print("Directions from " + orig + " to " + dest)
         print("Trip Duration:   " + json_data["route"]["formattedTime"])
 
-        print("Kilometers:      " + "{:.2f}".format(json_data["route"]["distance"] * 1.61))
+        # Convert distance to kilometers
+        distance_km = json_data["route"]["distance"] * 1.61
+        print("Kilometers:      " + "{:.2f}".format(distance_km))
 
+        # Fuel consumption calculation
         if "fuelUsed" in json_data["route"]:
-            print("Fuel Used (Ltr): " + "{:.2f}".format(json_data["route"]["fuelUsed"] * 3.78))
+            fuel_used_liters = json_data["route"]["fuelUsed"] * 3.78
         else:
             estimated_fuel_gallons = json_data["route"]["distance"] / 25  # 25 miles per gallon
-            print("Fuel Used (Ltr): " + "{:.2f}".format(estimated_fuel_gallons * 3.78))
+            fuel_used_liters = estimated_fuel_gallons * 3.78
+
+        print("Fuel Used (Ltr): " + "{:.2f}".format(fuel_used_liters))
+
+        # Calculate fuel efficiency (km per liter)
+        fuel_efficiency = distance_km / fuel_used_liters
+        print("Fuel Efficiency: " + "{:.2f}".format(fuel_efficiency) + " km/L")
 
         print("=============================================")
 
