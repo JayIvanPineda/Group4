@@ -25,6 +25,15 @@ while True:
         print("Directions from " + orig + " to " + dest)
         print("Trip Duration:   " + json_data["route"]["formattedTime"])
 
+        # Extract and convert times
+        normal_time = json_data["route"]["time"] / 60  # in minutes
+        real_time = json_data["route"].get("realTime", normal_time) / 60  # in minutes
+        congestion_time = real_time - normal_time
+
+        print("Normal Duration: {:.2f} minutes".format(normal_time))
+        print("Real-Time Duration (with traffic): {:.2f} minutes".format(real_time))
+        print("Traffic Delay: {:.2f} minutes".format(congestion_time))
+
         # Convert distance to kilometers
         distance_km = json_data["route"]["distance"] * 1.61
         print("Kilometers:      " + "{:.2f}".format(distance_km))
@@ -38,9 +47,16 @@ while True:
 
         print("Fuel Used (Ltr): " + "{:.2f}".format(fuel_used_liters))
 
-        # Calculate fuel efficiency (km per liter)
-        fuel_efficiency = distance_km / fuel_used_liters
-        print("Fuel Efficiency: " + "{:.2f}".format(fuel_efficiency) + " km/L")
+        # Adjust fuel consumption for traffic congestion
+        additional_fuel_due_to_traffic = (congestion_time / 60) * (fuel_used_liters / normal_time)
+        total_fuel_liters = fuel_used_liters + additional_fuel_due_to_traffic
+
+        print("Additional Fuel (due to traffic): {:.2f} Ltr".format(additional_fuel_due_to_traffic))
+        print("Total Fuel Used (Ltr): {:.2f}".format(total_fuel_liters))
+
+        # Calculate fuel efficiency (km per liter) adjusted for traffic
+        adjusted_fuel_efficiency = distance_km / total_fuel_liters
+        print("Adjusted Fuel Efficiency: {:.2f} km/L".format(adjusted_fuel_efficiency))
 
         print("=============================================")
 
