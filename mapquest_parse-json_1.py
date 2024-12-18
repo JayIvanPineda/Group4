@@ -4,6 +4,13 @@ import requests
 main_api = "https://www.mapquestapi.com/directions/v2/route?"
 key = "iVFunQKGKDhFjeLy5alWuBw2kRhlBvDT"
 
+# Average speed adjustment factors and fuel efficiency (km/L)
+VEHICLE_DATA = {
+    "motorcycle": {"speed_factor": 1.2, "efficiency": 35},  # 35 km/L
+    "car": {"speed_factor": 1.0, "efficiency": 15},        # 15 km/L
+    "bus": {"speed_factor": 0.7, "efficiency": 5}          # 5 km/L
+}
+
 while True:
     orig = input("Starting Location: ")
     if orig.lower() in ["quit", "q"]:
@@ -12,9 +19,16 @@ while True:
     if dest.lower() in ["quit", "q"]:
         break
 
-    url = main_api + urllib.parse.urlencode({"key": key, "from": orig, "to": dest})
+    # Vehicle choice
+    print("\nChoose your vehicle: [motorcycle, car, bus]")
+    vehicle = input("Vehicle: ").lower()
+    if vehicle not in VEHICLE_DATA:
+        print("Invalid vehicle choice! Defaulting to 'car'.")
+        vehicle = "car"
 
-    print("URL: " + url)
+    # API call
+    url = main_api + urllib.parse.urlencode({"key": key, "from": orig, "to": dest})
+    print("\nURL: " + url)
 
     json_data = requests.get(url).json()
     json_status = json_data["info"]["statuscode"]
@@ -22,47 +36,40 @@ while True:
     if json_status == 0:
         print("API Status: " + str(json_status) + " = A successful route call.\n")
         print("=============================================")
-        print("Directions from " + orig + " to " + dest)
-        print("Trip Duration:   " + json_data["route"]["formattedTime"])
-
-        # Extract and convert times
+        print(f"Directions from {orig} to {dest}")
+        
+        # Extract travel times
         normal_time = json_data["route"]["time"] / 60  # in minutes
         real_time = json_data["route"].get("realTime", normal_time) / 60  # in minutes
         congestion_time = real_time - normal_time
 
-        print("Normal Duration: {:.2f} minutes".format(normal_time))
-        print("Real-Time Duration (with traffic): {:.2f} minutes".format(real_time))
-        print("Traffic Delay: {:.2f} minutes".format(congestion_time))
+        # Adjust ETA based on vehicle
+        adjusted_eta = normal_time / VEHICLE_DATA[vehicle]["speed_factor"]
+        print(f"Normal Duration: {normal_time:.2f} minutes")
+        print(f"Adjusted Duration ({vehicle.title()}): {adjusted_eta:.2f} minutes")
+        print(f"Traffic Delay: {congestion_time:.2f} minutes")
 
-        # Convert distance to kilometers
+        # Distance in kilometers
         distance_km = json_data["route"]["distance"] * 1.61
-        print("Kilometers:      " + "{:.2f}".format(distance_km))
+        print(f"Distance: {distance_km:.2f} km")
 
-        # Fuel consumption calculation
-        if "fuelUsed" in json_data["route"]:
-            fuel_used_liters = json_data["route"]["fuelUsed"] * 3.78
-        else:
-            estimated_fuel_gallons = json_data["route"]["distance"] / 25  # 25 miles per gallon
-            fuel_used_liters = estimated_fuel_gallons * 3.78
+        # Fuel consumption
+        vehicle_efficiency = VEHICLE_DATA[vehicle]["efficiency"]
+        fuel_used_liters = distance_km / vehicle_efficiency
 
-        print("Fuel Used (Ltr): " + "{:.2f}".format(fuel_used_liters))
+        print(f"Fuel Used ({vehicle.title()}): {fuel_used_liters:.2f} L")
+        print(f"Fuel Efficiency: {vehicle_efficiency} km/L")
 
-        # Adjust fuel consumption for traffic congestion
-        additional_fuel_due_to_traffic = (congestion_time / 60) * (fuel_used_liters / normal_time)
+        # Adjust fuel for traffic congestion
+        additional_fuel_due_to_traffic = (congestion_time / 60) * (fuel_used_liters / adjusted_eta)
         total_fuel_liters = fuel_used_liters + additional_fuel_due_to_traffic
 
-        print("Additional Fuel (due to traffic): {:.2f} Ltr".format(additional_fuel_due_to_traffic))
-        print("Total Fuel Used (Ltr): {:.2f}".format(total_fuel_liters))
-
-        # Calculate fuel efficiency (km per liter) adjusted for traffic
-        adjusted_fuel_efficiency = distance_km / total_fuel_liters
-        print("Adjusted Fuel Efficiency: {:.2f} km/L".format(adjusted_fuel_efficiency))
+        print(f"Additional Fuel (Traffic): {additional_fuel_due_to_traffic:.2f} L")
+        print(f"Total Fuel Used: {total_fuel_liters:.2f} L")
 
         print("=============================================")
-
         for each in json_data["route"]["legs"][0]["maneuvers"]:
-            print(each["narrative"] + " (" + str("{:.2f}".format(each["distance"] * 1.61)) + " km)")
-
+            print(each["narrative"] + f" ({each['distance'] * 1.61:.2f} km)")
         print("=============================================\n")
 
     elif json_status == 402:
